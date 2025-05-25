@@ -23,7 +23,8 @@ def AgregarCurso():
     expanded_lecciones, set_expanded_lecciones = use_state({})
     
     # Estados para nuevas lecciones
-    nueva_leccion, set_nueva_leccion = use_state({})
+    nueva_leccion_titulo, set_nueva_leccion_titulo = use_state({})
+    nueva_leccion_contenido, set_nueva_leccion_contenido = use_state({})
     mensaje_leccion, set_mensaje_leccion = use_state("")
 
     async def enviar_formulario(event):
@@ -59,28 +60,32 @@ def AgregarCurso():
             set_mensaje(f"❌ Error inesperado: {str(e)}")
 
     async def enviar_leccion(id_curso):
-        try:
-            if not nueva_leccion.get(id_curso):
-                set_mensaje_leccion("❌ Título requerido para la lección")
-                return
+        titulo = nueva_leccion_titulo.get(id_curso, "")
+        contenido = nueva_leccion_contenido.get(id_curso, "")
+        
+        if not titulo:
+            set_mensaje_leccion("❌ Título requerido para la lección")
+            return
 
+        try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "http://localhost:8000/api/guardar-leccion",
                     json={
-                        "titulo": nueva_leccion[id_curso],
-                        "contenido": "",
+                        "titulo": titulo,
+                        "contenido": contenido,
                         "id_curso": id_curso
                     }
                 )
 
             if response.status_code == 200 and response.json().get("success"):
                 set_mensaje_leccion("✅ Lección guardada")
-                set_nueva_leccion({**nueva_leccion, id_curso: ""})
+                set_nueva_leccion_titulo({**nueva_leccion_titulo, id_curso: ""})
+                set_nueva_leccion_contenido({**nueva_leccion_contenido, id_curso: ""})
                 await cargar_cursos()
             else:
                 set_mensaje_leccion(f"❌ Error: {response.json().get('message', 'Error desconocido')}")
-                
+
         except Exception as e:
             set_mensaje_leccion(f"❌ Error inesperado: {str(e)}")
 
@@ -381,36 +386,52 @@ def AgregarCurso():
                             html.li(
                                 {"style": {"margin": "10px 0"}},
                                 html.div(
-                                    {"style": {"display": "flex", "gap": "10px"}},
-                                    html.input({
-                                        "type": "text",
-                                        "placeholder": "Nueva lección (máx. 20 caracteres)",
-                                        "value": nueva_leccion.get(curso['curso']['id_curso'], ""),
+                                    {"style": {"display": "flex", "flexDirection": "column", "gap": "10px"}},
+                                    html.div(
+                                        {"style": {"display": "flex", "gap": "10px"}},
+                                        html.input({
+                                            "type": "text",
+                                            "placeholder": "Título de lección (máx. 20 caracteres)",
+                                            "value": nueva_leccion_titulo.get(curso['curso']['id_curso'], ""),
+                                            "on_change": lambda e, id_curso=curso['curso']['id_curso']: 
+                                                set_nueva_leccion_titulo({**nueva_leccion_titulo, id_curso: e["target"]["value"]}),
+                                            "style": {
+                                                "flex": "1",
+                                                "padding": "8px",
+                                                "border": "1px solid #ddd",
+                                                "borderRadius": "4px"
+                                            },
+                                            "maxLength": "20"
+                                        }),
+                                        html.button(
+                                            {
+                                                "on_click": lambda _, id_curso=curso['curso']['id_curso']: 
+                                                    asyncio.ensure_future(enviar_leccion(id_curso)),
+                                                "style": {
+                                                    "padding": "8px 15px",
+                                                    "backgroundColor": "#2196F3",
+                                                    "color": "white",
+                                                    "border": "none",
+                                                    "borderRadius": "4px",
+                                                    "cursor": "pointer"
+                                                }
+                                            },
+                                            "Agregar Lección"
+                                        )
+                                    ),
+                                    html.textarea({
+                                        "placeholder": "Contenido de la lección",
+                                        "value": nueva_leccion_contenido.get(curso['curso']['id_curso'], ""),
                                         "on_change": lambda e, id_curso=curso['curso']['id_curso']: 
-                                            set_nueva_leccion({**nueva_leccion, id_curso: e["target"]["value"]}),
+                                            set_nueva_leccion_contenido({**nueva_leccion_contenido, id_curso: e["target"]["value"]}),
                                         "style": {
-                                            "flex": "1",
+                                            "width": "100%",
                                             "padding": "8px",
                                             "border": "1px solid #ddd",
-                                            "borderRadius": "4px"
-                                        },
-                                        "maxLength": "20"
-                                    }),
-                                    html.button(
-                                        {
-                                            "on_click": lambda _, id_curso=curso['curso']['id_curso']: 
-                                                asyncio.ensure_future(enviar_leccion(id_curso)),
-                                            "style": {
-                                                "padding": "8px 15px",
-                                                "backgroundColor": "#2196F3",
-                                                "color": "white",
-                                                "border": "none",
-                                                "borderRadius": "4px",
-                                                "cursor": "pointer"
-                                            }
-                                        },
-                                        "Agregar Lección"
-                                    )
+                                            "borderRadius": "4px",
+                                            "minHeight": "80px"
+                                        }
+                                    })
                                 )
                             ),
                             
@@ -442,7 +463,7 @@ def AgregarCurso():
                                         ),
                                         html.span(
                                             {"style": {"flex": "1"}},
-                                            leccion['titulo']
+                                            f"{leccion['titulo']} (ID: {leccion['id_leccion']})"
                                         )
                                     ),
                                     # Contenido de la lección (se muestra si está expandido)
