@@ -295,5 +295,22 @@ async def notas_por_curso(id_curso: int = Query(..., description="ID del curso")
             cursor.close()
             conn.close()
             
+# Observar vista de alumnos por curso
+@app.get("/api/vista-alumnos-por-curso")
+async def vista_alumnos_por_curso():
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM vista_alumnos_por_curso")
+        resultados = cursor.fetchall()
+        return {"success": True, "data": resultados}
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"❌ Error al consultar vista: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
 # Configuración de ReactPy
 configure(app, Menu)

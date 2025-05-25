@@ -1,4 +1,4 @@
-from reactpy import component, html, use_state, event
+from reactpy import component, html, use_state, event, hooks
 import httpx
 import logging
 
@@ -13,6 +13,23 @@ def AgregarUsuario():
     tipo_usuario, set_tipo_usuario = use_state("estudiante")
     contraseña, set_contraseña = use_state("")
     mensaje, set_mensaje = use_state("")
+
+    # Estado para la vista de alumnos por curso
+    alumnos_por_curso, set_alumnos_por_curso = use_state([])
+
+    # Cargar datos desde la vista SQL
+    async def cargar_datos_vista():
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://localhost:8000/api/vista-alumnos-por-curso")
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success"):
+                        set_alumnos_por_curso(data["data"])
+        except Exception as e:
+            logger.error(f"Error al cargar vista: {e}")
+
+    hooks.use_effect(cargar_datos_vista, [])
 
     @event(prevent_default=True)
     async def enviar_formulario(event):
@@ -46,6 +63,7 @@ def AgregarUsuario():
                     set_email("")
                     set_tipo_usuario("estudiante")
                     set_contraseña("")
+                    await cargar_datos_vista()
                 else:
                     set_mensaje(f"❌ {data.get('message', 'Error desconocido')}")
             else:
@@ -60,7 +78,7 @@ def AgregarUsuario():
 
     return html.div(
         {"style": {
-            "maxWidth": "500px",
+            "maxWidth": "600px",
             "margin": "0 auto",
             "padding": "20px",
             "border": "1px solid #ddd",
@@ -185,5 +203,33 @@ def AgregarUsuario():
                 "textAlign": "center"
             }},
             mensaje if mensaje else ""
+        ),
+        html.hr(),
+        html.h3("📋 Alumnos Inscritos por Curso"),
+        html.table(
+            {"style": {
+                "width": "100%",
+                "marginTop": "15px",
+                "borderCollapse": "collapse",
+                "border": "1px solid #ccc"
+            }},
+            html.thead(
+                html.tr(
+                    html.th("ID Alumno"),
+                    html.th("Nombre"),
+                    html.th("ID Curso"),
+                    html.th("Curso"),
+                    html.th("Estado")
+                )
+            ),
+            html.tbody(*[
+                html.tr(
+                    html.td(row.get("id_alumno", "")),
+                    html.td(f"{row.get('nombre_alumno', '')} {row.get('apellido_alumno', '')}"),
+                    html.td(row.get("id_curso", "")),
+                    html.td(row.get("curso", "")),
+                    html.td(row.get("estado", ""))
+                ) for row in alumnos_por_curso
+            ])
         )
     )
