@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from reactpy.backend.fastapi import configure
 import mysql.connector
@@ -43,7 +43,14 @@ class InscripcionModel(BaseModel):
     id_curso: int
     fecha_inscripcion: str  # formato: YYYY-MM-DD
     estado: str = 'activa'
-    
+
+# Agregar el modelo EvaluacionModel
+class EvaluacionModel(BaseModel):
+    tipo: str
+    nota: int
+    id_leccion: int
+    id_usuario: int
+
 # Configuración de FastAPI
 app = FastAPI()
 
@@ -225,6 +232,68 @@ async def inscribir_alumno(inscripcion: InscripcionModel):
             cursor.close()
             conn.close()
 
+# Agregar este nuevo endpoint (junto con los otros endpoints)
+@app.post("/api/guardar-evaluacion")
+async def guardar_evaluacion(evaluacion: EvaluacionModel):
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO Evaluacion (tipo, nota, id_leccion, id_usuario) VALUES (%s, %s, %s, %s)",
+            (evaluacion.tipo, evaluacion.nota, evaluacion.id_leccion, evaluacion.id_usuario)
+        )
+        conn.commit()
+        return {"success": True, "message": "✅ Evaluación registrada"}
+    except mysql.connector.Error as err:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=f"❌ Error: {err}")
+    finally:
+        if conn.is_connected():
+            cursor.close()
+            conn.close()
+            
+# Obtener notas por alumno
+@app.get("/api/notas-por-alumno")
+async def notas_por_alumno(id_usuario: int = Query(..., description="ID del usuario")):
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.callproc("NotaPorAlumno", [id_usuario])
+
+        for result in cursor.stored_results():
+            notas = result.fetchall()
+
+        return {"success": True, "data": notas}
+
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"❌ Error al obtener notas del alumno: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+# Obtener notas por curso
+@app.get("/api/notas-por-curso")
+async def notas_por_curso(id_curso: int = Query(..., description="ID del curso")):
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.callproc("NotasPorCurso", [id_curso])
+
+        for result in cursor.stored_results():
+            notas = result.fetchall()
+
+        return {"success": True, "data": notas}
+
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"❌ Error al obtener notas por curso: {err}")
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
             
 # Configuración de ReactPy
 configure(app, Menu)

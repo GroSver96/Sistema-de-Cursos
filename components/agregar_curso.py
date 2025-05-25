@@ -248,7 +248,7 @@ def AgregarCurso():
                         "style": {
                             "width": "100%",
                             "padding": "10px",
-                            "backgroundColor": "#4CAF50",
+                            "backgroundColor": "#0d6efd",
                             "color": "white",
                             "border": "none",
                             "borderRadius": "4px",
