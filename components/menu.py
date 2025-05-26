@@ -8,6 +8,23 @@ from components.ver_notas import VerNotas
 def Menu():
     current_view, set_current_view = hooks.use_state("inicio")
 
+    # Títulos para cada vista
+    titles = {
+        "inicio": "Sistema de Cursos - Inicio",
+        "agregar_usuario": "Sistema de Cursos - Agregar Usuario",
+        "agregar_curso": "Sistema de Cursos - Agregar Curso", 
+        "agregar_notas": "Sistema de Cursos - Agregar Notas",
+        "ver_notas": "Sistema de Cursos - Ver Notas",
+    }
+
+    # Efecto para cambiar el título cuando cambia la vista
+    def change_title():
+        title = titles.get(current_view, "Sistema de Cursos")
+        # Cambiar el título usando JavaScript
+        return html.script(f"document.title = '{title}';")
+    
+    hooks.use_effect(change_title, [current_view])
+
     views = {
         "inicio": lambda: html.p("Bienvenido al sistema de cursos. Elige una opción del menú."),
         "agregar_usuario": AgregarUsuario,
@@ -50,6 +67,10 @@ def Menu():
             "minHeight": "100vh",
             "backgroundColor": "#f5f5f5"
         }},
+        
+        # Script para cambiar título dinámicamente
+        html.script(f"document.title = '{titles.get(current_view, 'Sistema de Cursos')}';"),
+        
         # Header
         html.div(
             {"style": {
@@ -66,7 +87,7 @@ def Menu():
                 "Sistema de Cursos Online"
             )
         ),
-        
+            
         # Navigation
         html.div(
             {"style": {
@@ -119,14 +140,8 @@ def Menu():
                 "padding": "15px",
                 "fontSize": "0.9em"
             }},
-            "Sistema de Cursos © 2023 | Todos los derechos reservados"
+            "Sistema de Cursos © 2025 | Todos los derechos reservados | GroSveR en los controles"
         ),
-        
-        # Bootstrap Icons
-        html.link({
-            "rel": "stylesheet",
-            "href": "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
-        }),
         
         # Custom CSS
         html.style("""
@@ -139,3 +154,5 @@ def Menu():
             }
         """)
     )
+
+__all__ = ['Menu']

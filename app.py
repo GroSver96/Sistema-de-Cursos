@@ -1,12 +1,17 @@
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
+from reactpy import component, html
 from reactpy.backend.fastapi import configure
 import mysql.connector
-from datetime import datetime
 from mysql.connector import Error
 from pydantic import BaseModel
 import logging
-
+from datetime import datetime
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from reactpy.backend.fastapi import configure
+from components.menu import Menu
 
 # Importar el componente Menu desde su ubicación correcta
 from components.menu import Menu
@@ -76,6 +81,7 @@ def get_db():
     except Error as e:
         logger.error(f"Error de conexión: {e}")
         raise HTTPException(status_code=500, detail="Error de conexión a la base de datos")
+
 
 # Endpoint para guardar usuarios
 @app.post("/api/guardar-usuario")
@@ -311,6 +317,23 @@ async def vista_alumnos_por_curso():
         if conn and conn.is_connected():
             cursor.close()
             conn.close()
+            
 
-# Configuración de ReactPy
+# Obtener alumnos sin curso
+@app.get("/api/alumnos-sin-curso")
+async def obtener_alumnos_sin_curso():
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM vista_alumnos_sin_curso")
+        return cursor.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+# Configuración de ReactPy - DEBE SER LA ÚLTIMA LÍNEA
 configure(app, Menu)
